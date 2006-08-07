@@ -11,7 +11,7 @@ use base qw(File::Attributes::Base);
 use Best [ [ qw/YAML::Syck YAML/ ], qw/DumpFile LoadFile/ ];
 use File::Spec;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub applicable {
     return 1; # this module Works Everywhere, hopefully.
@@ -90,6 +90,11 @@ sub unset {
 sub _attribute_file {
     my $self = shift;
     my $file = shift;
+
+    my $max = 10;
+    while($max-- && -l $file){
+	$file = readlink $file;
+    }
     
     my ($volume,$dirs,$filename) = File::Spec->splitpath($file);
     return File::Spec->catpath($volume, $dirs, ".$filename.attributes");
@@ -156,3 +161,11 @@ could be implemented by overriding this class, but I don't have a Mac
 and couldn't find any documentation.
 
 =cut
+
+=head1 BUGS
+
+See bug reporting instructions in L<File::Attributes/BUGS>.
+
+=head1 AUTHOR
+
+Jonathan Rockway C<< <jrockway at cpan.org> >>

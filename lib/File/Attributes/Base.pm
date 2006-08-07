@@ -48,7 +48,7 @@ by default.
 
 =head1 METHODS THAT SUBCLASSES SHOULD IMPLEMENT
 
-... but aren't required to, because C<$instance->can('method')> will tell
+... but aren't required to, because C<< $instance->can('method') >> will tell
 whoever's using the module that you're not implementing that method.
 
 =head2 get($file, $attribute)
@@ -83,4 +83,4 @@ Jonathan Rockway C<< <jrockway@cpan.org> >>.
 
 =head1 BUGS
 
-Report to RT; see L<File::Attribute/BUGS>.
+Report to RT; see L<File::Attributes/BUGS>.

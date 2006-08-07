@@ -1,7 +1,7 @@
 abstract: Manipulate file metadata
 author: Jonathan Rockway <jrockway@cpan.org
 build_requires: 
-  Directory::Scratch: 0
+  Directory::Scratch: 0.05
   Test::More: 0
 distribution_type: module
 generated_by: Module::Install version 0.63
@@ -18,4 +18,4 @@ requires:
   File::Spec: 0
   Module::Pluggable: 0
   YAML: 0
-version: 0.01
+version: 0.02
