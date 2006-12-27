@@ -2,10 +2,13 @@
 # simple-link.t 
 # Copyright (c) 2006 Jonathan Rockway <jrockway@cpan.org>
 
-use Test::More tests => 12;
+use Test::More;
 use File::Attributes::Simple;
-
 use Directory::Scratch;
+
+plan skip_all => 'Win32 cannot link' if $^O eq 'MSWin32';
+plan tests => 12;
+
 my  $tmp = Directory::Scratch->new;
 my $orig = $tmp->touch('file');
 $tmp->link('file', 'new');
