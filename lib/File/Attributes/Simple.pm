@@ -11,7 +11,11 @@ use base qw(File::Attributes::Base);
 use Best [ [ qw/YAML::Syck YAML/ ], qw/DumpFile LoadFile/ ];
 use File::Spec;
 
-our $VERSION = '0.02';
+our $VERSION = '0.04';
+
+sub priority {
+    return 1; # try something else first, eh?
+}
 
 sub applicable {
     return 1; # this module Works Everywhere, hopefully.
@@ -33,7 +37,12 @@ sub _save {
     my $data = shift;
     my $attrfile = $self->_attribute_file($file);
 
-    DumpFile($attrfile, $data);
+    if(!scalar keys %$data){
+	unlink $attrfile;
+    }
+    else {
+	DumpFile($attrfile, $data);
+    }
 }
 
 sub list {
@@ -44,7 +53,7 @@ sub list {
     eval {
 	$data = $self->_load($file);
     };
-    
+
     return keys %{$data};
 }
 
@@ -71,6 +80,7 @@ sub set {
     
     $data->{$key} = $value;
     $self->_save($file, $data);
+    return 1;
 }
 
 sub unset {
@@ -85,6 +95,7 @@ sub unset {
     
     delete $data->{$key};
     $self->_save($file, $data);
+    return 1;
 }
 
 sub _attribute_file {
@@ -128,6 +139,12 @@ All the standard ones, namely:
 =head2 list
 
 =head2 applicable
+
+Applicable for every file.
+
+=head2 priority
+
+Priority 1 (low).
 
 =head1 EXTENDING
 

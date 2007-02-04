@@ -5,7 +5,7 @@ package File::Attributes;
 use warnings;
 use strict;
 use Carp;
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # modules that we require
 use Module::Pluggable ( search_path => 'File::Attributes',
@@ -24,47 +24,25 @@ our %EXPORT_TAGS = (all => [@EXPORT_OK]);
 # internal variables
 my @modules; # the modules to call, in order
 
-
-sub _do_each {
-    my $what = shift;
+sub _foreach_plugin(@&){
     my @args = @_;
     my $file = $args[0];
-    croak "$file does not exist" if !-e $file;
-    
-    #print {*STDERR} "_do_each called with $what (@_)\n";
+    my $code = pop @args;
 
-    my @ERRORS;
-    my $result;
-    my @result;
-    
+    croak "$file does not exist" if !-e $file;
+
     foreach my $plugin (@modules){
-	if(wantarray){
-	    eval {
-		@result = $plugin->$what(@_);
-	    };
-	}
-	else {
-	    eval {
-		$result = $plugin->$what(@_);
-	    };
-	}
-	
-	if($@){
-	    push @ERRORS, $@;
-	}
-	else {
-	    # success!, so return
-	    return wantarray ? @result : $result;
+	next if !$plugin->applicable($file);
+	my @result = $code->($plugin, @args);
+	if(@result){
+	    return @result if wantarray;
+	    return $result[0];
 	}
     }
-    
-    # if we get here, everything failed
-    my $caller = (caller(1))[3];
-    croak "$caller failed: @ERRORS";
 }
 
 sub set_attribute {
-    _do_each('set', @_);
+    _foreach_plugin @_, sub { my $p = shift; $p->set(@_) };
     return;
 }
 
@@ -80,15 +58,14 @@ sub set_attributes {
     else {
 	%attributes = ($first, @_);
     }    
-
-
+    
     foreach my $key (keys %attributes){
 	set_attribute($file, $key, $attributes{$key});
     }
 }
 
 sub get_attribute {
-    return _do_each('get', @_);
+    return _foreach_plugin @_, sub { my $p = shift; $p->get(@_) };
 }
 
 sub get_attributes {
@@ -102,7 +79,12 @@ sub get_attributes {
 }
 
 sub unset_attribute {
-    return _do_each('unset', @_);
+    _foreach_plugin @_, 
+      sub { my $p = shift; 
+	    $p->unset(@_); 
+	    return; # force unset on all plugins
+	};
+    return;
 }
 
 sub unset_attributes {
@@ -115,27 +97,30 @@ sub unset_attributes {
 }
 
 sub list_attributes {
-    my @result = _do_each('list', @_);
-    return @result;
+    my @result;
+    _foreach_plugin @_, 
+      sub { 
+	  my $p = shift;
+	  push @result, $p->list(@_);
+	  return; # force examination of all plugins
+      };
+    my %result = map { $_ => 1 } @result; # filter out dupes
+    return keys %result;
 }
 
 sub _init {
     my $simple;
     foreach my $plugin (plugins()){
 	eval {
-	    if($plugin->isa('File::Attributes::Base') && $plugin->applicable){
-		if($plugin =~ /^File::Attributes::Simple[^:]/){
-		    # we want File::Attributes::Simple to be last, always.
-		    $simple = $plugin;
-		}
-		else {
-		    push @modules, $plugin;
-		}
-	    }
+	    push @modules, $plugin
+	      if $plugin->isa('File::Attributes::Base') && 
+		$plugin->priority > 0;
 	};
     }
 
-    @modules = (@modules, $simple) if $simple;
+    # sort from highest priority to lowest
+    @modules = reverse sort {$a->priority <=> $b->priority} @modules;
+    
     return scalar @modules;
 }
 
@@ -152,7 +137,7 @@ File::Attributes - Manipulate file metadata
 
 =head1 VERSION
 
-Version 0.02
+Version 0.04
 
 =cut
 
@@ -185,10 +170,21 @@ your system.  If it finds one, it uses that.  If not, it uses
 C<File::Attributes::Simple>, which is bundled with this module and
 works everywhere.
 
+As of version 0.04, plugins are now set up per-file, not per-system.
+This means that if you have C<File::Attributes::Extended> installed,
+extended attributes will be used where available, but Simple
+attributes will be used on files where extended attributes don't work
+(a FAT filesytem on a Linux machine, for example).  Existing simple
+attributes will be read even if extended attributes are available, but
+writes will affect only the extended attributes.  
+
+This means that you can switch to a better attribute plugin at any time,
+without losing any old data!
+
 =head1 EXPORT
 
 None, by default.  Specify the functions that you'd like to use as
-arguments to the module.
+arguments to the module.  If you want everything, specify C<:all>.
 
 =head1 FUNCTIONS
 
